@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daftar Tugas</title>
+</head>
+<body>
+  <h1>Daftar Tugas</h1>
+  <p>Progres: {{ progres }}%</p>
+
+  <form method="post" action="{{ url_for('main.tambah') }}">
+    <input name="judul" placeholder="Tugas baru" required maxlength="100">
+    <button type="submit">Tambah</button>
+  </form>
+
+  <ul>
+    {% for t in tugas %}
+    <li>
+      <span {% if t.selesai %}style="text-decoration: line-through"{% endif %}>{{ t.judul }}</span>
+      <form method="post" action="{{ url_for('main.selesai', id=t.id) }}" style="display:inline">
+        <button>{{ 'Batal' if t.selesai else 'Selesai' }}</button>
+      </form>
+      <form method="post" action="{{ url_for('main.hapus', id=t.id) }}" style="display:inline">
+        <button>Hapus</button>
+      </form>
+    </li>
+    {% else %}
+    <li>Belum ada tugas.</li>
+    {% endfor %}
+  </ul>
+</body>
+</html>

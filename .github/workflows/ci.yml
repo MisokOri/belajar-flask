@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  tes:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -19,4 +19,27 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
-      - run: python -m pytest -v
+      - run: ruff check .
+
+  tes:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -v --cov=app --cov-report=term-missing --cov-fail-under=80
+
+  lulus:
+    needs: [lint, tes]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          [ "${{ needs.lint.result }}" = "success" ] && [ "${{ needs.tes.result }}" = "success" ]

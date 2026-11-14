@@ -1,6 +1,6 @@
 """Logika murni (tanpa Flask/DB) -> paling mudah dites unit."""
 
-MAKS_PANJANG = 5
+MAKS_PANJANG = 100
 
 
 def bersihkan_judul(judul):

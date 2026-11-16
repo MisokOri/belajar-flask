@@ -18,7 +18,8 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install -r requirements.txt
+          cache-dependency-path: requirements*.txt
+      - run: pip install -r requirements-dev.txt
       - run: ruff check .
 
   tes:
@@ -33,13 +34,49 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
           cache: pip
-      - run: pip install -r requirements.txt
+          cache-dependency-path: requirements*.txt
+      - run: pip install -r requirements-dev.txt
       - run: python -m pytest -v --cov=app --cov-report=term-missing --cov-fail-under=80
 
-  lulus:
+  image:
     needs: [lint, tes]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      TAG_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Siapkan nama image (harus huruf kecil)
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+
+      - name: Build image
+        run: docker build -t "$IMAGE:$TAG_SHA" -t "$IMAGE:latest" .
+
+      - name: Smoke test /health
+        run: |
+          docker run -d --name app -p 8000:8000 "$IMAGE:$TAG_SHA"
+          for i in $(seq 1 10); do
+            curl -fsS http://localhost:8000/health && exit 0
+            sleep 1
+          done
+          docker logs app
+          exit 1
+
+      - name: Login ke GHCR
+        if: github.event_name == 'push'
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Push image
+        if: github.event_name == 'push'
+        run: docker push --all-tags "$IMAGE"
+
+  lulus:
+    needs: [lint, tes, image]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - run: |
-          [ "${{ needs.lint.result }}" = "success" ] && [ "${{ needs.tes.result }}" = "success" ]
+          [ "${{ needs.lint.result }}" = "success" ] && [ "${{ needs.tes.result }}" = "success" ] && [ "${{ needs.image.result }}" = "success" ]
